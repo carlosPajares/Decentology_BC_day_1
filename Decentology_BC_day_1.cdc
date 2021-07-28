@@ -1,18 +1,4 @@
 
-pub struct Canvas  {
-
-    pub let width: UInt8
-    pub let height: UInt8
-    pub let pixels: String
-
-    init (width: UInt8, height: UInt8, pixels: String ) {
-        self.width = width
-        self.height = height
-        self.pixels = pixels
-    }
-    
-}
-
 pub fun display(canvas: Canvas){    
   let frameTopBottomStyle: String = "+-----+"
   let frameSideStyle: String = "|"
@@ -30,25 +16,6 @@ pub fun display(canvas: Canvas){
 }
 
 
-pub resource Printer {
-  pub fun print(canvas: Canvas): @Picture? {
-    //log(canvas)
-    //Print de canvas with frame
-    display(canvas: canvas)
-
-    let mPicture <- create Picture(canvas: canvas)
-    return <- mPicture 
-  }
-}
-
-
-pub resource Picture {
-    pub let canvas: Canvas
-
-    init (canvas: Canvas) {
-        self.canvas = canvas
-    }
-}
 
 pub fun serialazeStringArray(_ lines: [String]): String {
     var buffer = ""
@@ -59,6 +26,73 @@ pub fun serialazeStringArray(_ lines: [String]): String {
 
     return buffer
 }
+
+  pub struct Canvas {
+
+    pub let width: UInt8
+    pub let height: UInt8
+    pub let pixels: String
+
+    init(width: UInt8, height: UInt8, pixels: String) {
+      self.width = width
+      self.height = height
+      // The following pixels
+      // 123
+      // 456
+      // 789
+      // should be serialized as
+      // 123456789
+      self.pixels = pixels
+    }
+  }
+
+  pub resource Picture {
+
+    pub let canvas: Canvas
+    
+    init(canvas: Canvas) {
+      self.canvas = canvas
+    }
+  }
+
+  pub resource Printer {
+
+    pub let width: UInt8
+    pub let height: UInt8
+    pub let prints: {String: Canvas}
+
+    init(width: UInt8, height: UInt8) {
+      self.width = width;
+      self.height = height;
+      self.prints = {}
+    }
+
+    pub fun print(canvas: Canvas): @Picture? {
+      // Canvas needs to fit Printer's dimensions.
+      if canvas.pixels.length != Int(self.width * self.height) {
+        return nil
+      }
+
+      // Canvas can only use visible ASCII characters.
+      for symbol in canvas.pixels.utf8 {
+        if symbol < 32 || symbol > 126 {
+          return nil
+        }
+      }
+
+      // Printer is only allowed to print unique canvases.
+      if self.prints.containsKey(canvas.pixels) == false {
+        let picture <- create Picture(canvas: canvas)
+        self.prints[canvas.pixels] = canvas
+        display(canvas: canvas)
+        return <- picture
+      } else {
+        return nil
+      }
+    }
+  }
+
+
 
 pub fun main(){
     let pixelsX = [
@@ -77,7 +111,7 @@ pub fun main(){
     let letterX <- create Picture(canvas: canvasX)
     log(letterX.canvas)
 
-    let printX <- create Printer()
+    let printX <- create Printer(width: 5, height: 5)
     let printO <- printX.print(canvas: canvasX)
 
     destroy letterX
